@@ -31,7 +31,7 @@ jobs:
         docker run --rm \
           -v "$HOME/.ssh:/root/.ssh:ro" \
           trufflesecurity/trufflehog:latest \
-          git ssh://github.com/${{ github.repository }} > trufflehog_output
+          git ssh://github.com/${{ github.repository }} > trufflehog_output 2>&1
 
     - name: Check Trufflehog Results
       id: check-results
