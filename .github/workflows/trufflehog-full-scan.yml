@@ -1,0 +1,49 @@
+name: TruffleHog Full Scan
+
+on:
+  workflow_dispatch:
+
+jobs:
+  TruffleHog:
+    name: Run TruffleHog
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up SSH
+      uses: webfactory/ssh-agent@v0.9.0
+      with:
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+    - name: Setup Docker
+      if: success()
+      uses: ./.github/actions/setup-docker
+
+    - name: Set up SSH
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+        chmod 600 ~/.ssh/id_ed25519
+        ssh-keyscan github.com >> ~/.ssh/known_hosts
+
+    - name: Run Trufflehog
+      run: |
+        docker run --rm \
+          -v "$HOME/.ssh:/root/.ssh:ro" \
+          trufflesecurity/trufflehog:latest \
+          git ssh://github.com/${{ github.repository }} > trufflehog_output
+
+    - name: Check Trufflehog Results
+      id: check-results
+      run: |
+        verified_secrets=$(cat trufflehog_output | grep -oP '"verified_secrets": \d+' | grep -oP '\d+')
+        unverified_secrets=$(cat trufflehog_output | grep -oP '"unverified_secrets": \d+' | grep -oP '\d+')
+
+        if [ "$verified_secrets" -ne 0 ] || [ "$unverified_secrets" -ne 0 ]; then
+          echo "Secrets found! ☠️"
+          exit 1
+        fi
+  
+    - name: Notify Success
+      if: success()
+      run: echo "No secrets found, scan passed!"
