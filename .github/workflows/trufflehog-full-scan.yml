@@ -43,7 +43,7 @@ jobs:
           echo "Secrets found! ☠️"
           exit 1
         fi
-  
+
     - name: Notify Success
       if: success()
       run: echo "No secrets found, scan passed!"
